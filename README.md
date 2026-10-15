@@ -19,9 +19,9 @@ customer-retention-analytics/
 ├── src/
 │   ├── download.py         # Module to download raw dataset
 │   ├── validate.py         # Schema & data validation checks
-│   ├── clean.py            # Data cleaning and TotalCharges type coercion
+│   ├── clean.py            # Data cleaning, whitespace normalization, and TotalCharges type coercion
 │   ├── db.py               # SQLite loading with idempotency support
-│   ├── report.py           # Data quality report generation
+│   ├── report.py           # Data quality report generation with explicit missingness audit
 │   └── pipeline.py         # End-to-end Phase 1 execution runner
 ├── tests/                  # Pytest unit and integration test suite
 ├── .gitignore              # Git ignore rules
@@ -33,15 +33,22 @@ customer-retention-analytics/
 
 ---
 
-## Data Cleaning Policy
-- **TotalCharges Handling**:
-  - Raw `TotalCharges` entries contain whitespace (`" "`) for 11 new customers with `tenure == 0`.
-  - Missing values are safely converted to numeric `NaN` (float) using `pd.to_numeric(..., errors='coerce')`.
-  - Missing values are **preserved and reported**; records are **not** silently deleted, nor are missing charges replaced with `0` or imputed without domain justification.
-- **Validation Rules**:
-  - `customerID`: Non-empty strings and strictly unique (Primary Key).
-  - `Churn`: Strictly validated against `Yes` and `No` labels.
-  - Numeric columns (`tenure`, `MonthlyCharges`): Verified non-negative.
+## Data Cleaning & Validation Policy
+- **Customer ID Normalization**:
+  - Surrounding whitespace in `customerID` is normalized in the cleaned copy prior to uniqueness validation and loading into SQLite.
+  - IDs that become duplicates after whitespace normalization are strictly rejected.
+  - Raw CSV files remain completely unchanged.
+- **Churn Label Strictness**:
+  - `Churn` labels must be non-null and strictly equal to `Yes` or `No`. Null/missing values or any other strings are rejected.
+- **Senior Citizen Constraint**:
+  - `SeniorCitizen` must be strictly `0` or `1`. Non-numeric or out-of-bounds values are rejected.
+- **Tenure Constraint**:
+  - `tenure` must be a non-negative integer. Fractional numbers, negative values, and infinite values are strictly rejected without silent truncation.
+- **Numeric Charge Constraints**:
+  - `MonthlyCharges`: Must be non-negative and finite (rejecting negative and infinite charges).
+  - `TotalCharges`: Legitimate missing entries (e.g. new customers with `tenure == 0`) are safely converted to numeric `NaN` (float) using coercion and preserved as `NULL` in SQLite. Negative or infinite `TotalCharges` values are rejected.
+- **Audit Reporting**:
+  - The pipeline explicitly distinguishes and reports blank/empty missing `TotalCharges` from non-empty invalid strings coerced to `NaN`.
 
 ---
 

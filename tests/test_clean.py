@@ -3,9 +3,9 @@ import numpy as np
 from src.clean import clean_data
 
 
-def test_clean_data_total_charges_missing_and_numeric():
+def test_clean_data_whitespace_normalization_and_types():
     raw_data = pd.DataFrame({
-        "customerID": ["1111-AAA", "2222-BBB", "3333-CCC"],
+        "customerID": [" 1111-AAA ", "2222-BBB", "3333-CCC"],
         "gender": ["Female", "Male", "Male"],
         "SeniorCitizen": [0, 0, 1],
         "Partner": ["Yes", "No", "No"],
@@ -32,6 +32,9 @@ def test_clean_data_total_charges_missing_and_numeric():
 
     # Check row count preserved (no rows dropped)
     assert len(cleaned_df) == 3
+
+    # Check customerID whitespace normalized
+    assert cleaned_df.loc[0, "customerID"] == "1111-AAA"
 
     # Check TotalCharges conversion
     assert pd.isna(cleaned_df.loc[0, "TotalCharges"])

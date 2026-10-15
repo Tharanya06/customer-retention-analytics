@@ -4,6 +4,34 @@ import pandas as pd
 DEFAULT_REPORT_PATH = os.path.join("docs", "data_quality_report.md")
 
 
+def audit_total_charges(raw_df: pd.DataFrame, cleaned_df: pd.DataFrame) -> dict:
+    """
+    Audits TotalCharges column distinguishing:
+    - Blank / empty missing values (legitimate missing values, e.g. tenure == 0).
+    - Non-empty invalid strings coerced to NaN.
+    - Total missing TotalCharges values in cleaned DataFrame.
+    """
+    s_raw = raw_df["TotalCharges"].astype(str).str.strip()
+
+    # Blank/missing in raw data (empty string, 'nan', 'none', or pandas isna)
+    is_blank_raw = (raw_df["TotalCharges"].isna()) | (s_raw == "") | (s_raw.str.lower() == "nan") | (s_raw.str.lower() == "none")
+    blank_count = is_blank_raw.sum()
+
+    # Non-empty raw values
+    non_empty_raw = raw_df.loc[~is_blank_raw, "TotalCharges"]
+    # Check which non-empty values fail numeric conversion
+    coerced_numeric = pd.to_numeric(non_empty_raw, errors="coerce")
+    invalid_string_count = coerced_numeric.isna().sum()
+
+    cleaned_missing_count = cleaned_df["TotalCharges"].isna().sum()
+
+    return {
+        "blank_missing_raw": int(blank_count),
+        "invalid_string_raw": int(invalid_string_count),
+        "total_missing_cleaned": int(cleaned_missing_count)
+    }
+
+
 def generate_report(raw_df: pd.DataFrame, cleaned_df: pd.DataFrame, db_row_count: int, report_path: str = DEFAULT_REPORT_PATH) -> str:
     """
     Generates a Data Quality Report based on actual dataset metrics and outputs Markdown report.
@@ -11,8 +39,7 @@ def generate_report(raw_df: pd.DataFrame, cleaned_df: pd.DataFrame, db_row_count
     total_raw_rows = len(raw_df)
     total_cleaned_rows = len(cleaned_df)
 
-    raw_missing_tc = (raw_df["TotalCharges"].astype(str).str.strip() == "").sum()
-    cleaned_missing_tc = cleaned_df["TotalCharges"].isna().sum()
+    tc_audit = audit_total_charges(raw_df, cleaned_df)
 
     churn_distribution = cleaned_df["Churn"].value_counts(dropna=False).to_dict()
     missing_by_col = cleaned_df.isna().sum().to_dict()
@@ -27,11 +54,13 @@ def generate_report(raw_df: pd.DataFrame, cleaned_df: pd.DataFrame, db_row_count
 - **Record Retention Rate**: 100% (No records deleted during cleaning)
 
 ## 2. Missing Value & Cleaning Audit
-- **TotalCharges Missing (Raw - Empty Strings/Spaces)**: {raw_missing_tc}
-- **TotalCharges Missing (Cleaned - NaN Values)**: {cleaned_missing_tc}
+- **Blank / Empty TotalCharges in Raw Data**: {tc_audit['blank_missing_raw']}
+- **Non-Empty Invalid TotalCharges Strings Coerced to NaN**: {tc_audit['invalid_string_raw']}
+- **Total Missing TotalCharges in Cleaned Data**: {tc_audit['total_missing_cleaned']}
 - **Missing Value Handling Policy**:
   - Blank values in `TotalCharges` correspond to new customers with `tenure == 0`.
   - Rather than silently dropping records or fabricating values with 0 or mean imputations, missing `TotalCharges` values are safely converted to numeric `NaN` (float) to preserve data integrity for downstream analytical and modeling tasks.
+  - Non-empty invalid strings (if present) are safely coerced to `NaN` and explicitly audited.
 
 ### Missing Values per Column in Processed Data:
 """
@@ -43,7 +72,7 @@ def generate_report(raw_df: pd.DataFrame, cleaned_df: pd.DataFrame, db_row_count
 - **Churn Distribution**: {churn_distribution}
 
 ## 4. Pipeline Idempotency & Database Verification
-- Primary Key (`customerID`) enforced in SQLite schema.
+- Primary Key (`customerID`) enforced in SQLite schema (with whitespace normalized).
 - Re-running the pipeline uses `INSERT OR REPLACE`, ensuring database record count remains exactly **{db_row_count}** without duplicate entries.
 """
 
