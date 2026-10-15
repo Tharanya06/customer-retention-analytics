@@ -9,7 +9,7 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Cleans raw dataframe:
     - Normalizes surrounding whitespace on customerID.
-    - Validates inputs (strictly checking churn, senior citizen, tenure, charges).
+    - Validates inputs (strictly checking churn, senior citizen, tenure, charges, including infinity checks after trimming).
     - Safely converts TotalCharges to float numeric using coerce (empty strings/spaces become NaN).
     - Preserves missing values (does NOT drop rows or fill missing TotalCharges with 0).
     """
@@ -21,7 +21,7 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
     validate_dataset(cleaned_df)
 
-    # Safely convert TotalCharges to numeric.
+    # Safely convert TotalCharges to numeric using trimmed strings.
     # Blank spaces " " or invalid non-empty strings will be converted to NaN.
     cleaned_df["TotalCharges"] = pd.to_numeric(cleaned_df["TotalCharges"].astype(str).str.strip(), errors="coerce")
 

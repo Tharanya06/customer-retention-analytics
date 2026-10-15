@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import pytest
 from src.clean import clean_data
 
 
@@ -44,3 +45,33 @@ def test_clean_data_whitespace_normalization_and_types():
     # Ensure missing value is NaN and not replaced with 0
     assert cleaned_df.loc[0, "TotalCharges"] != 0
     assert isinstance(cleaned_df["TotalCharges"].dtype, (np.dtype, type(np.float64)))
+
+
+@pytest.mark.parametrize("inf_val", [" inf ", " -inf ", "\tInfinity\t", "-Infinity"])
+def test_clean_data_rejects_infinite_total_charges(inf_val):
+    raw_data = pd.DataFrame({
+        "customerID": ["1111-AAA"],
+        "gender": ["Female"],
+        "SeniorCitizen": [0],
+        "Partner": ["Yes"],
+        "Dependents": ["No"],
+        "tenure": [1],
+        "PhoneService": ["Yes"],
+        "MultipleLines": ["No"],
+        "InternetService": ["No"],
+        "OnlineSecurity": ["No internet service"],
+        "OnlineBackup": ["No internet service"],
+        "DeviceProtection": ["No internet service"],
+        "TechSupport": ["No internet service"],
+        "StreamingTV": ["No internet service"],
+        "StreamingMovies": ["No internet service"],
+        "Contract": ["Two year"],
+        "PaperlessBilling": ["No"],
+        "PaymentMethod": ["Mailed check"],
+        "MonthlyCharges": [20.0],
+        "TotalCharges": [inf_val],
+        "Churn": ["No"],
+    })
+
+    with pytest.raises(ValueError, match="infinite values"):
+        clean_data(raw_data)

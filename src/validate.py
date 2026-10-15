@@ -114,21 +114,20 @@ def validate_total_charges(df: pd.DataFrame) -> None:
     """
     Validate TotalCharges:
     - Legitimate missing values (blank/spaces or NaN) are allowed.
-    - If present and convertible to numeric, values must be non-negative and finite.
-    - Negative or infinite TotalCharges are rejected.
+    - Uses consistent whitespace trimming (`.str.strip()`) before numeric conversion.
+    - Explicitly rejects positive and negative infinity (including whitespace-padded variants like " inf ", "\tInfinity\t").
+    - Explicitly rejects negative TotalCharges.
     """
     if "TotalCharges" not in df.columns:
         raise ValueError("TotalCharges column missing.")
 
-    # Convert non-blank strings to float to check validity
+    # Convert non-blank strings after trimming to float to check validity
     s = df["TotalCharges"].astype(str).str.strip()
     is_blank = (df["TotalCharges"].isna()) | (s == "") | (s.str.lower() == "nan") | (s.str.lower() == "none")
 
-    non_blank_vals = df.loc[~is_blank, "TotalCharges"]
-    if len(non_blank_vals) > 0:
-        converted = pd.to_numeric(non_blank_vals, errors="coerce")
-        # Check if any non-blank value failed conversion to numeric
-        # (Note: invalid strings that are non-empty will be checked/handled in clean/report, but if they convert to negative/inf we reject)
+    non_blank_trimmed = s[~is_blank]
+    if len(non_blank_trimmed) > 0:
+        converted = pd.to_numeric(non_blank_trimmed, errors="coerce")
         valid_numeric = converted.dropna()
 
         if np.isinf(valid_numeric).any():

@@ -17,10 +17,10 @@ def audit_total_charges(raw_df: pd.DataFrame, cleaned_df: pd.DataFrame) -> dict:
     is_blank_raw = (raw_df["TotalCharges"].isna()) | (s_raw == "") | (s_raw.str.lower() == "nan") | (s_raw.str.lower() == "none")
     blank_count = is_blank_raw.sum()
 
-    # Non-empty raw values
-    non_empty_raw = raw_df.loc[~is_blank_raw, "TotalCharges"]
+    # Non-empty raw values trimmed before numeric conversion
+    non_empty_trimmed = s_raw[~is_blank_raw]
     # Check which non-empty values fail numeric conversion
-    coerced_numeric = pd.to_numeric(non_empty_raw, errors="coerce")
+    coerced_numeric = pd.to_numeric(non_empty_trimmed, errors="coerce")
     invalid_string_count = coerced_numeric.isna().sum()
 
     cleaned_missing_count = cleaned_df["TotalCharges"].isna().sum()

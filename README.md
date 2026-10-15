@@ -46,7 +46,7 @@ customer-retention-analytics/
   - `tenure` must be a non-negative integer. Fractional numbers, negative values, and infinite values are strictly rejected without silent truncation.
 - **Numeric Charge Constraints**:
   - `MonthlyCharges`: Must be non-negative and finite (rejecting negative and infinite charges).
-  - `TotalCharges`: Legitimate missing entries (e.g. new customers with `tenure == 0`) are safely converted to numeric `NaN` (float) using coercion and preserved as `NULL` in SQLite. Negative or infinite `TotalCharges` values are rejected.
+  - `TotalCharges`: Uses consistent whitespace trimming (`.str.strip()`) before numeric conversion. Legitimate missing entries (e.g. new customers with `tenure == 0`) are safely converted to numeric `NaN` (float) using coercion and preserved as `NULL` in SQLite. Positive and negative infinity (including whitespace-padded strings such as `" inf "`, `"\tInfinity\t"`) as well as negative `TotalCharges` values are strictly rejected.
 - **Audit Reporting**:
   - The pipeline explicitly distinguishes and reports blank/empty missing `TotalCharges` from non-empty invalid strings coerced to `NaN`.
 
