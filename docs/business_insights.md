@@ -43,11 +43,11 @@ This document summarizes empirical business findings derived directly from SQL a
 - *Observation*: Electronic check customers churn at nearly 3x the rate of automatic payment methods (Bank Transfer/Credit Card).
 
 ### Tenure Band Dynamics
-- **0–12 Months**: 2,186 customers. Churn rate is **47.44%** (1,037 churned).
-- **13–24 Months**: 1,024 customers. Churn rate is **28.71%** (294 churned).
-- **25–48 Months**: 1,594 customers. Churn rate is **20.39%** (325 churned).
-- **49–72 Months**: 2,239 customers. Churn rate is **9.51%** (213 churned).
-- *Observation*: Nearly half (47.44%) of new customers churn in their first year. Churn rate steadily declines as tenure increases.
+- **0–12 Months**: 2,186 customers. 1,037 churned (47.44%).
+- **13–24 Months**: 1,024 customers. 294 churned (28.71%).
+- **25–48 Months**: 1,594 customers. 325 churned (20.39%).
+- **49–72 Months**: 2,239 customers. 213 churned (9.51%).
+- *Observation*: Among customers with recorded tenure of 0–12 months, 47.44% are labeled Churn = Yes. Note that this is a cross-sectional proportion observed in a single dataset snapshot, not a longitudinal probability of customer churn within the first year.
 
 ---
 
@@ -72,12 +72,12 @@ The following recommendations are action-oriented hypotheses based on empirical 
 
 1. **Hypothesis 1: Onboarding Incentive for Fiber Optic Month-to-Month Subscribers**
    - *Rationale*: Month-to-month Fiber Optic subscribers exhibit the highest churn rate in the dataset (54.61%, 1,162 churned).
-   - *Hypothesis*: Offering a modest bill discount or service perk in exchange for migrating from Month-to-month to a 1-Year Contract during the first 90 days will reduce 1st-year Fiber Optic churn.
+   - *Hypothesis*: Offering a modest bill discount or service perk in exchange for migrating from Month-to-month to a 1-Year Contract during the first 90 days will reduce Fiber Optic subscriber churn.
 
 2. **Hypothesis 2: Automatic Payment Migration Campaign**
    - *Rationale*: Electronic check users churn at 45.29% compared to ~16% for automatic payment options.
    - *Hypothesis*: Providing a small one-time account credit ($5–$10) for switching from Electronic Check to Automatic Credit Card / Bank Transfer will improve retention among high-risk payment cohorts.
 
-3. **Hypothesis 3: Early-Tenure (First 12 Months) Retention Program**
-   - *Rationale*: 47.44% of customers in tenure band 0–12 months churn, representing 55.48% of all churned customers (1,037 out of 1,869).
-   - *Hypothesis*: Deploying proactive check-ins, technical onboarding support, and satisfaction surveys during months 1–6 will increase early customer engagement and lower first-year drop-off.
+3. **Hypothesis 3: Early-Tenure (0–12 Months) Retention Program**
+   - *Rationale*: Among customers with recorded tenure of 0–12 months, 47.44% are labeled Churn = Yes, representing 55.48% of all churned customers in the dataset snapshot (1,037 out of 1,869).
+   - *Hypothesis*: Deploying proactive check-ins, technical onboarding support, and satisfaction surveys during early tenure (months 1–6) will increase customer engagement and reduce early churn.

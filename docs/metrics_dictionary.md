@@ -11,21 +11,21 @@ This document provides exact definitions, mathematical formulas, denominator log
 - **Formula**:
   $$\text{total\_customers} = \text{COUNT(*)}$$
 - **Denominator**: N/A (Count metric).
-- **NULL Handling**: `COUNT(*)` includes all rows regardless of NULL values in individual columns.
+- **NULL Handling**: `COUNT(*)` includes all rows regardless of NULL values in individual columns. On an empty table or cohort, returns `0`.
 
 ### 2. Churned Customer Count (`churned_customers`)
 - **Definition**: The total number of customers who have churned (`Churn = 'Yes'`).
 - **Formula**:
-  $$\text{churned\_customers} = \sum \mathbf{1}(\text{Churn} = \text{'Yes'})$$
+  $$\text{churned\_customers} = \text{COALESCE}\left(\sum \mathbf{1}(\text{Churn} = \text{'Yes'}), 0\right)$$
 - **Denominator**: N/A (Count metric).
-- **NULL Handling**: `Churn` column is non-null for all 7,043 rows (enforced in Phase 1 validation).
+- **NULL Handling**: `Churn` column is non-null for all 7,043 rows in validated datasets. On an empty table or cohort, returns `0`.
 
 ### 3. Retained Customer Count (`retained_customers`)
 - **Definition**: The total number of active/retained customers (`Churn = 'No'`).
 - **Formula**:
-  $$\text{retained\_customers} = \sum \mathbf{1}(\text{Churn} = \text{'No'})$$
+  $$\text{retained\_customers} = \text{COALESCE}\left(\sum \mathbf{1}(\text{Churn} = \text{'No'}), 0\right)$$
 - **Denominator**: N/A (Count metric).
-- **NULL Handling**: Non-null for all rows.
+- **NULL Handling**: Non-null for all rows. On an empty table or cohort, returns `0`.
 
 ### 4. Churn Rate (`churn_rate`)
 - **Definition**: The proportion of customers within a cohort or dataset who have churned.
@@ -39,38 +39,50 @@ This document provides exact definitions, mathematical formulas, denominator log
 - **Formula**:
   $$\text{avg\_monthly\_charges} = \operatorname{ROUND}\left(\operatorname{AVG}(\text{MonthlyCharges}), 2\right)$$
 - **Denominator**: `COUNT(MonthlyCharges)` (non-null monthly charges count).
-- **NULL Handling**: All 7,043 rows have non-null `MonthlyCharges`.
+- **Empty-Table / NULL Handling**: When `COUNT(MonthlyCharges) = 0` (e.g. on an empty table or cohort), SQLite `AVG()` yields `NULL` (or Python `None`), preserving the undefined nature of an average over zero items.
 
 ### 6. Retained Monthly Charges Total (`retained_monthly_charges_total`)
 - **Definition**: The sum of `MonthlyCharges` contributed by retained customers (`Churn = 'No'`).
 - **Labeling Standard**: Labeled descriptively as a monthly-charge total for retained customers. **Not** designated as recurring revenue, ARR, or financial profit.
 - **Formula**:
-  $$\text{retained\_monthly\_charges\_total} = \operatorname{ROUND}\left(\sum_{\text{Churn}=\text{'No'}} \text{MonthlyCharges}, 2\right)$$
+  $$\text{retained\_monthly\_charges\_total} = \text{COALESCE}\left(\operatorname{ROUND}\left(\sum_{\text{Churn}=\text{'No'}} \text{MonthlyCharges}, 2\right), 0.0\right)$$
 - **Denominator**: N/A (Sum metric).
+- **Empty-Table / NULL Handling**: Wrapped with `COALESCE(..., 0.0)` to ensure a clean `0.0` sum when no matching retained customers exist.
 
 ### 7. Churned Monthly Charges Total (`churned_monthly_charges_total`)
 - **Definition**: The sum of `MonthlyCharges` associated with customers who churned (`Churn = 'Yes'`).
 - **Labeling Standard**: Labeled descriptively as a monthly-charge total associated with churned accounts. **Not** designated as measured revenue loss, future financial loss, or recoverable savings.
 - **Formula**:
-  $$\text{churned\_monthly\_charges\_total} = \operatorname{ROUND}\left(\sum_{\text{Churn}=\text{'Yes'}} \text{MonthlyCharges}, 2\right)$$
+  $$\text{churned\_monthly\_charges\_total} = \text{COALESCE}\left(\operatorname{ROUND}\left(\sum_{\text{Churn}=\text{'Yes'}} \text{MonthlyCharges}, 2\right), 0.0\right)$$
 - **Denominator**: N/A (Sum metric).
+- **Empty-Table / NULL Handling**: Wrapped with `COALESCE(..., 0.0)` to ensure a clean `0.0` sum when no matching churned customers exist.
 
 ### 8. Non-Null Total Charges Count (`total_charges_non_null_count`)
 - **Definition**: The count of customer records with valid, non-null `TotalCharges`.
 - **Formula**:
   $$\text{total\_charges\_non\_null_count} = \operatorname{COUNT}(\text{TotalCharges})$$
-- **NULL Handling**: SQLite `COUNT(column)` ignores NULL values. Exactly 11 customers (new accounts with `tenure = 0`) have NULL `TotalCharges`, yielding 7,032 non-null records on the full dataset.
+- **NULL Handling**: SQLite `COUNT(column)` ignores NULL values. On the full dataset, exactly 11 customers (new accounts with `tenure = 0`) have NULL `TotalCharges`, yielding 7,032 non-null records. On an empty table, returns `0`.
 
-### 9. Average Total Charges (`avg_total_charges`)
-- **Definition**: The arithmetic mean of cumulative `TotalCharges` among non-null records.
+### 9. Average Total Charges (`avg_total_charges`) & Sum (`total_charges_sum`)
+- **Definition**: The arithmetic mean and aggregate sum of cumulative `TotalCharges` among non-null records.
 - **Formula**:
   $$\text{avg\_total\_charges} = \operatorname{ROUND}\left(\operatorname{AVG}(\text{TotalCharges}), 2\right)$$
+  $$\text{total\_charges\_sum} = \operatorname{ROUND}\left(\sum \text{TotalCharges}, 2\right)$$
 - **Denominator**: `COUNT(TotalCharges)` (7,032 non-null records in full dataset).
-- **NULL Handling**: SQLite `AVG()` automatically excludes NULL rows from both numerator and denominator.
+- **Empty-Table / All-NULL Handling**: SQLite `AVG()` and `SUM()` automatically return `NULL` (Python `None`) when all records are NULL or when the table is empty, accurately reflecting that sum and average are undefined when no valid values exist.
 
 ---
 
-## 2. Segmentation & Tenure Band Definitions
+## 2. Empty-Table & Null Aggregate Policy Summary
+
+To maintain analytical rigor, Phase 2 SQL queries strictly follow this aggregation policy for empty tables or cohorts:
+- **Count & Sum Metrics**: `total_customers`, `churned_customers`, `retained_customers`, `retained_monthly_charges_total`, `churned_monthly_charges_total`, and `total_charges_non_null_count` consistently return `0` or `0.0`.
+- **Rate Metrics**: `churn_rate` uses explicit `CASE WHEN COUNT(*) = 0 THEN 0.0` logic to return `0.0` and avoid division-by-zero.
+- **Average & All-Missing Metrics**: `avg_monthly_charges`, `avg_total_charges`, and `total_charges_sum` return `NULL` (represented as `None` / `NaN` in Python/Pandas) when there are zero records or when all target entries are missing/NULL.
+
+---
+
+## 3. Segmentation & Tenure Band Definitions
 
 Segments are analyzed across single dimensions and multi-attribute combinations:
 - **Contract**: `Month-to-month`, `One year`, `Two year`.
@@ -85,7 +97,7 @@ Segments are analyzed across single dimensions and multi-attribute combinations:
 
 ---
 
-## 3. High-Churn Ranking & CTE Methodology
+## 4. High-Churn Ranking & CTE Methodology
 
 High-churn segments are identified using a Common Table Expression (CTE) combined with the `DENSE_RANK()` window function:
 - **Filtering Threshold**: Only segments with `total_customers >= 30` are included in ranking to prevent small-sample distortion.
@@ -94,7 +106,7 @@ High-churn segments are identified using a Common Table Expression (CTE) combine
 
 ---
 
-## 4. Analytical Limitations & Dataset Constraints
+## 5. Analytical Limitations & Dataset Constraints
 
 1. **Cross-Sectional Dataset**:
    - The data represents a single snapshot in time (`Telco-Customer-Churn` fictional dataset).
